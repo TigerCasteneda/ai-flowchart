@@ -36,6 +36,8 @@ const FlowChartApp = (function() {
     let curveIdCounter = 0;
     let drawPoints = [];
     let documentContent = null;
+    let diagramBackground = '#0D0D0D';
+    let diagramTheme = 'modern';
 
     let settings = {
         aiMode: 'builtin',
@@ -634,7 +636,11 @@ const FlowChartApp = (function() {
             strokeColor: options.strokeColor || style.strokeColor,
             textColor: options.textColor || style.textColor,
             rotation: options.rotation || 0,
-            strokeWidth: options.strokeWidth || 2
+            strokeWidth: options.strokeWidth || 2,
+            gradient: options.gradient,
+            shadow: options.shadow !== undefined ? options.shadow : true,
+            icon: options.icon,
+            importance: options.importance || 3
         };
         nodes.push(node);
         selectNode(node);
@@ -936,7 +942,10 @@ const FlowChartApp = (function() {
     }
 
     function render() {
-        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+        ctx.save();
+        ctx.fillStyle = diagramBackground;
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+        ctx.restore();
         
         ctx.save();
         ctx.translate(panX, panY);
@@ -986,12 +995,30 @@ const FlowChartApp = (function() {
             ctx.translate(-x, -y);
         }
 
-        if (isSelected || isHovered) {
-            ctx.shadowColor = isSelected ? '#4A90D9' : '#63B3ED';
-            ctx.shadowBlur = 15;
+        if (node.shadow || isSelected || isHovered) {
+            ctx.shadowColor = isSelected ? '#4A90D9' : (isHovered ? '#63B3ED' : 'rgba(0,0,0,0.4)');
+            ctx.shadowBlur = isSelected ? 15 : (isHovered ? 10 : 8);
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 3;
         }
 
-        ctx.fillStyle = node.fillColor;
+        let fillStyle = node.fillColor;
+        if (node.gradient) {
+            const gradientEndColor = lightenColor(node.fillColor, 40);
+            let gradient;
+            if (node.gradient === 'vertical') {
+                gradient = ctx.createLinearGradient(x, y - h/2, x, y + h/2);
+            } else if (node.gradient === 'horizontal') {
+                gradient = ctx.createLinearGradient(x - w/2, y, x + w/2, y);
+            } else {
+                gradient = ctx.createLinearGradient(x - w/2, y - h/2, x + w/2, y + h/2);
+            }
+            gradient.addColorStop(0, node.fillColor);
+            gradient.addColorStop(1, gradientEndColor);
+            fillStyle = gradient;
+        }
+
+        ctx.fillStyle = fillStyle;
         ctx.strokeStyle = isSelected ? '#FFFFFF' : node.strokeColor;
         ctx.lineWidth = isSelected ? 3 : (node.strokeWidth || 2);
 
@@ -1002,6 +1029,10 @@ const FlowChartApp = (function() {
                 drawRoundedRect(x - w/2, y - h/2, w, h, Math.min(h/2, 30));
                 break;
             case 'process':
+            case 'database':
+            case 'server':
+            case 'person':
+            case 'gear':
                 drawRoundedRect(x - w/2, y - h/2, w, h, 8);
                 break;
             case 'decision':
@@ -1064,15 +1095,21 @@ const FlowChartApp = (function() {
         ctx.stroke();
         ctx.restore();
 
+        if (node.icon) {
+            drawIcon(node.icon, x, y, w, h, node.textColor);
+        }
+
         if (node.text) {
             ctx.fillStyle = node.textColor;
-            ctx.font = `${Math.min(14, Math.min(w, h) / 4)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            const fontSize = Math.min(14, Math.min(w, h) / 4);
+            ctx.font = `600 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             
             const lines = node.text.split('\\n');
-            const lineHeight = Math.min(16, h / (lines.length + 1));
-            const startY = y - (lines.length - 1) * lineHeight / 2;
+            const lineHeight = Math.min(18, h / (lines.length + 1));
+            const iconOffset = node.icon ? 15 : 0;
+            const startY = y - (lines.length - 1) * lineHeight / 2 + iconOffset;
             
             lines.forEach((line, i) => {
                 ctx.fillText(line, x, startY + i * lineHeight, w - 10);
@@ -1082,6 +1119,152 @@ const FlowChartApp = (function() {
         if (isSelected) {
             drawResizeHandles(node);
         }
+    }
+
+    function lightenColor(hex, percent) {
+        const num = parseInt(hex.replace('#', ''), 16);
+        const amt = Math.round(2.55 * percent);
+        const R = (num >> 16) + amt;
+        const G = (num >> 8 & 0x00FF) + amt;
+        const B = (num & 0x0000FF) + amt;
+        return '#' + (
+            0x1000000 +
+            (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 +
+            (G < 255 ? (G < 1 ? 0 : G) : 255) * 0x100 +
+            (B < 255 ? (B < 1 ? 0 : B) : 255)
+        ).toString(16).slice(1);
+    }
+
+    function drawIcon(iconName, x, y, w, h, color) {
+        const iconSize = Math.min(20, Math.min(w, h) / 4);
+        const iconY = y - h/4;
+        ctx.save();
+        ctx.fillStyle = color;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+
+        switch (iconName) {
+            case 'database':
+                ctx.beginPath();
+                ctx.ellipse(x, iconY, iconSize * 0.8, iconSize * 0.4, 0, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x - iconSize * 0.8, iconY);
+                ctx.lineTo(x - iconSize * 0.8, iconY + iconSize * 0.6);
+                ctx.ellipse(x, iconY + iconSize * 0.6, iconSize * 0.8, iconSize * 0.4, 0, Math.PI, 0);
+                ctx.lineTo(x + iconSize * 0.8, iconY);
+                ctx.stroke();
+                break;
+            case 'server':
+                ctx.beginPath();
+                ctx.rect(x - iconSize * 0.7, iconY - iconSize * 0.5, iconSize * 1.4, iconSize);
+                ctx.stroke();
+                ctx.fillRect(x - iconSize * 0.5, iconY - iconSize * 0.3, iconSize * 0.3, iconSize * 0.15);
+                ctx.fillRect(x + iconSize * 0.1, iconY - iconSize * 0.3, iconSize * 0.3, iconSize * 0.15);
+                break;
+            case 'cloud':
+                ctx.beginPath();
+                ctx.arc(x - iconSize * 0.5, iconY, iconSize * 0.4, 0, Math.PI * 2);
+                ctx.arc(x, iconY - iconSize * 0.2, iconSize * 0.5, 0, Math.PI * 2);
+                ctx.arc(x + iconSize * 0.5, iconY, iconSize * 0.4, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            case 'user':
+            case 'person':
+                ctx.beginPath();
+                ctx.arc(x, iconY - iconSize * 0.2, iconSize * 0.35, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x - iconSize * 0.5, iconY + iconSize * 0.6);
+                ctx.quadraticCurveTo(x - iconSize * 0.5, iconY + iconSize * 0.1, x, iconY + iconSize * 0.1);
+                ctx.quadraticCurveTo(x + iconSize * 0.5, iconY + iconSize * 0.1, x + iconSize * 0.5, iconY + iconSize * 0.6);
+                ctx.stroke();
+                break;
+            case 'file':
+                ctx.beginPath();
+                ctx.moveTo(x - iconSize * 0.5, iconY - iconSize * 0.5);
+                ctx.lineTo(x + iconSize * 0.2, iconY - iconSize * 0.5);
+                ctx.lineTo(x + iconSize * 0.5, iconY - iconSize * 0.2);
+                ctx.lineTo(x + iconSize * 0.5, iconY + iconSize * 0.5);
+                ctx.lineTo(x - iconSize * 0.5, iconY + iconSize * 0.5);
+                ctx.closePath();
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x + iconSize * 0.2, iconY - iconSize * 0.5);
+                ctx.lineTo(x + iconSize * 0.2, iconY - iconSize * 0.2);
+                ctx.lineTo(x + iconSize * 0.5, iconY - iconSize * 0.2);
+                ctx.stroke();
+                break;
+            case 'gear':
+            case 'settings':
+                const teeth = 8;
+                const outerR = iconSize * 0.5;
+                const innerR = iconSize * 0.35;
+                const holeR = iconSize * 0.15;
+                ctx.beginPath();
+                for (let i = 0; i < teeth * 2; i++) {
+                    const r = i % 2 === 0 ? outerR : innerR;
+                    const angle = (i * Math.PI) / teeth - Math.PI / 2;
+                    const px = x + r * Math.cos(angle);
+                    const py = iconY + r * Math.sin(angle);
+                    if (i === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.closePath();
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(x, iconY, holeR, 0, Math.PI * 2);
+                ctx.stroke();
+                break;
+            case 'globe':
+                ctx.beginPath();
+                ctx.arc(x, iconY, iconSize * 0.5, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.ellipse(x, iconY, iconSize * 0.5, iconSize * 0.2, 0, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x, iconY - iconSize * 0.5);
+                ctx.lineTo(x, iconY + iconSize * 0.5);
+                ctx.stroke();
+                break;
+            case 'lock':
+                ctx.beginPath();
+                ctx.rect(x - iconSize * 0.5, iconY - iconSize * 0.1, iconSize, iconSize * 0.6);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(x, iconY - iconSize * 0.1, iconSize * 0.35, Math.PI, 0);
+                ctx.stroke();
+                break;
+            case 'mail':
+                ctx.beginPath();
+                ctx.rect(x - iconSize * 0.6, iconY - iconSize * 0.35, iconSize * 1.2, iconSize * 0.7);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x - iconSize * 0.6, iconY - iconSize * 0.35);
+                ctx.lineTo(x, iconY);
+                ctx.lineTo(x + iconSize * 0.6, iconY - iconSize * 0.35);
+                ctx.stroke();
+                break;
+            case 'phone':
+                ctx.beginPath();
+                ctx.roundRect(x - iconSize * 0.4, iconY - iconSize * 0.6, iconSize * 0.8, iconSize * 1.2, 3);
+                ctx.stroke();
+                break;
+            case 'home':
+                ctx.beginPath();
+                ctx.moveTo(x, iconY - iconSize * 0.5);
+                ctx.lineTo(x + iconSize * 0.5, iconY);
+                ctx.lineTo(x + iconSize * 0.4, iconY);
+                ctx.lineTo(x + iconSize * 0.4, iconY + iconSize * 0.4);
+                ctx.lineTo(x - iconSize * 0.4, iconY + iconSize * 0.4);
+                ctx.lineTo(x - iconSize * 0.4, iconY);
+                ctx.lineTo(x - iconSize * 0.5, iconY);
+                ctx.closePath();
+                ctx.stroke();
+                break;
+        }
+        ctx.restore();
     }
 
     function drawRoundedRect(x, y, w, h, r) {
@@ -1261,54 +1444,88 @@ const FlowChartApp = (function() {
         const isSelected = selectedEdge && selectedEdge.id === edge.id;
         const isHovered = hoveredEdge && hoveredEdge.id === edge.id;
 
-        const points = calculateEdgePoints(fromNode, toNode);
-        
-        ctx.strokeStyle = isSelected ? '#FFFFFF' : (isHovered ? '#63B3ED' : '#A0AEC0');
-        ctx.lineWidth = isSelected ? 3 : 2;
+        const edgeColor = edge.color || '#A0AEC0';
+
+        ctx.strokeStyle = isSelected ? '#FFFFFF' : (isHovered ? lightenColor(edgeColor, 30) : edgeColor);
+        ctx.lineWidth = isSelected ? 3 : (edge.width || 2);
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
 
         if (edge.style === 'dashed') {
-            ctx.setLineDash([5, 5]);
+            ctx.setLineDash([8, 5]);
+        } else if (edge.style === 'dotted') {
+            ctx.setLineDash([3, 4]);
         } else {
             ctx.setLineDash([]);
         }
 
+        const points = calculateEdgePoints(fromNode, toNode);
+        
         ctx.beginPath();
-        ctx.moveTo(points.x1, points.y1);
-        ctx.lineTo(points.x2, points.y2);
+        if (edge.curved) {
+            const midX = (points.x1 + points.x2) / 2;
+            const midY = (points.y1 + points.y2) / 2;
+            const dx = points.x2 - points.x1;
+            const dy = points.y2 - points.y1;
+            const perpX = -dy * 0.2;
+            const perpY = dx * 0.2;
+            const ctrlX = midX + perpX;
+            const ctrlY = midY + perpY;
+            
+            ctx.moveTo(points.x1, points.y1);
+            ctx.quadraticCurveTo(ctrlX, ctrlY, points.x2, points.y2);
+        } else {
+            ctx.moveTo(points.x1, points.y1);
+            ctx.lineTo(points.x2, points.y2);
+        }
         ctx.stroke();
         ctx.setLineDash([]);
 
         const angle = Math.atan2(points.y2 - points.y1, points.x2 - points.x1);
+        const arrowSize = ARROW_SIZE * (isSelected ? 1.3 : 1);
+        
         ctx.fillStyle = ctx.strokeStyle;
         ctx.beginPath();
         ctx.moveTo(points.x2, points.y2);
         ctx.lineTo(
-            points.x2 - ARROW_SIZE * Math.cos(angle - Math.PI/6),
-            points.y2 - ARROW_SIZE * Math.sin(angle - Math.PI/6)
+            points.x2 - arrowSize * Math.cos(angle - Math.PI/6),
+            points.y2 - arrowSize * Math.sin(angle - Math.PI/6)
         );
         ctx.lineTo(
-            points.x2 - ARROW_SIZE * Math.cos(angle + Math.PI/6),
-            points.y2 - ARROW_SIZE * Math.sin(angle + Math.PI/6)
+            points.x2 - arrowSize * Math.cos(angle + Math.PI/6),
+            points.y2 - arrowSize * Math.sin(angle + Math.PI/6)
         );
         ctx.closePath();
         ctx.fill();
 
         if (edge.label) {
-            const midX = (points.x1 + points.x2) / 2;
-            const midY = (points.y1 + points.y2) / 2;
+            let midX, midY;
+            if (edge.curved) {
+                const dx = points.x2 - points.x1;
+                const dy = points.y2 - points.y1;
+                midX = (points.x1 + points.x2) / 2 + (-dy * 0.15);
+                midY = (points.y1 + points.y2) / 2 + (dx * 0.15);
+            } else {
+                midX = (points.x1 + points.x2) / 2;
+                midY = (points.y1 + points.y2) / 2;
+            }
             
-            ctx.fillStyle = '#2D3748';
-            ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.font = '600 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             
-            const padding = 4;
+            const padding = 6;
             const textWidth = ctx.measureText(edge.label).width;
-            ctx.fillRect(midX - textWidth/2 - padding, midY - 8 - padding, textWidth + padding*2, 16 + padding*2);
             
-            ctx.fillStyle = '#FFFFFF';
+            ctx.fillStyle = diagramBackground;
+            ctx.beginPath();
+            ctx.roundRect(midX - textWidth/2 - padding, midY - 8 - padding, textWidth + padding*2, 16 + padding*2, 4);
+            ctx.fill();
+            ctx.strokeStyle = edgeColor;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            ctx.fillStyle = edgeColor;
             ctx.fillText(edge.label, midX, midY);
         }
     }
@@ -1473,6 +1690,20 @@ const FlowChartApp = (function() {
         const idMap = {};
         const diagramType = data.diagramType || 'flowchart';
 
+        if (data.background) {
+            diagramBackground = data.background.color || '#0D0D0D';
+        } else if (data.theme) {
+            const themeBackgrounds = {
+                modern: '#0F172A',
+                tech: '#0F172A',
+                nature: '#0F1F0F',
+                gradient: '#1A1A2E',
+                mono: '#1A1A1A'
+            };
+            diagramBackground = themeBackgrounds[data.theme] || '#0D0D0D';
+        }
+        diagramTheme = data.theme || 'modern';
+
         if (data.nodes && data.nodes.length > 0) {
             const layout = calculateLayout(data.nodes, data.edges, diagramType);
             
@@ -1492,7 +1723,11 @@ const FlowChartApp = (function() {
                         height: nodeData.height,
                         fillColor: nodeData.fillColor,
                         strokeColor: nodeData.strokeColor,
-                        textColor: nodeData.textColor
+                        textColor: nodeData.textColor,
+                        gradient: nodeData.gradient,
+                        shadow: nodeData.shadow !== undefined ? nodeData.shadow : true,
+                        icon: nodeData.icon,
+                        importance: nodeData.importance
                     }
                 );
                 idMap[nodeData.id] = node.id;
@@ -1505,7 +1740,12 @@ const FlowChartApp = (function() {
                 const toId = idMap[edgeData.to] || idMap[edgeData.target];
                 
                 if (fromId && toId) {
-                    createEdge(fromId, toId, edgeData.label || '', edgeData.style || 'solid');
+                    const edge = createEdge(fromId, toId, edgeData.label || '', edgeData.style || 'solid');
+                    if (edge) {
+                        edge.color = edgeData.color;
+                        edge.curved = edgeData.curved;
+                        edge.width = edgeData.width;
+                    }
                 }
             });
         }
