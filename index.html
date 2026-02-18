@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI FlowChart - 智能图表生成器</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231a1a1a'/%3E%3Cpath d='M20 50h25M55 50h25M50 20v25M50 55v25' stroke='%23fff' stroke-width='8' stroke-linecap='round'/%3E%3Ccircle cx='50' cy='50' r='12' fill='%23fff'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo">
+                <i class="fas fa-project-diagram"></i>
+                <span>AI FlowChart</span>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-icon" id="btnSettings" title="设置">
+                    <i class="fas fa-cog"></i>
+                </button>
+                <button class="btn btn-icon" id="btnHelp" title="帮助">
+                    <i class="fas fa-question-circle"></i>
+                </button>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-magic"></i> AI 生成</h3>
+                    <div class="ai-input-area">
+                        <div class="ai-tabs">
+                            <button class="ai-tab active" data-tab="text">
+                                <i class="fas fa-keyboard"></i> 文字描述
+                            </button>
+                            <button class="ai-tab" data-tab="document">
+                                <i class="fas fa-file-alt"></i> 文档上传
+                            </button>
+                        </div>
+                        <div class="ai-tab-content active" id="tabText">
+                            <textarea id="aiPrompt" placeholder="描述你想画的图表，例如：&#10;&#10;• 用户登录流程图&#10;• 光合作用过程示意图&#10;• 太阳系行星分布图&#10;• 公司组织架构图"></textarea>
+                        </div>
+                        <div class="ai-tab-content" id="tabDocument">
+                            <div class="document-upload-area" id="documentDropZone">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>拖拽文档到此处或点击上传</p>
+                                <span>支持 .txt, .md, .docx</span>
+                                <input type="file" id="documentFile" accept=".txt,.md,.docx" style="display: none;">
+                            </div>
+                            <div class="document-preview" id="documentPreview" style="display: none;">
+                                <div class="document-info">
+                                    <i class="fas fa-file-alt"></i>
+                                    <span id="documentName">document.txt</span>
+                                    <button class="btn btn-icon btn-sm" id="btnRemoveDocument">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <textarea id="documentContent" placeholder="文档内容预览..."></textarea>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary btn-block btn-send" id="btnGenerate">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-shapes"></i> 形状工具</h3>
+                    <div class="shape-category">
+                        <div class="shape-category-title">流程图</div>
+                        <div class="shape-tools">
+                            <button class="shape-btn" data-shape="start" title="开始/结束">
+                                <div class="shape-preview oval"></div>
+                                <span>开始/结束</span>
+                            </button>
+                            <button class="shape-btn" data-shape="process" title="处理过程">
+                                <div class="shape-preview rectangle"></div>
+                                <span>处理过程</span>
+                            </button>
+                            <button class="shape-btn" data-shape="decision" title="判断">
+                                <div class="shape-preview diamond"></div>
+                                <span>判断</span>
+                            </button>
+                            <button class="shape-btn" data-shape="data" title="数据">
+                                <div class="shape-preview parallelogram"></div>
+                                <span>数据</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="shape-category">
+                        <div class="shape-category-title">基础形状</div>
+                        <div class="shape-tools">
+                            <button class="shape-btn" data-shape="circle" title="圆形">
+                                <div class="shape-preview circle"></div>
+                                <span>圆形</span>
+                            </button>
+                            <button class="shape-btn" data-shape="rectangle" title="矩形">
+                                <div class="shape-preview rectangle"></div>
+                                <span>矩形</span>
+                            </button>
+                            <button class="shape-btn" data-shape="triangle" title="三角形">
+                                <div class="shape-preview triangle"></div>
+                                <span>三角形</span>
+                            </button>
+                            <button class="shape-btn" data-shape="star" title="星形">
+                                <div class="shape-preview star">★</div>
+                                <span>星形</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="shape-category">
+                        <div class="shape-category-title">自然元素</div>
+                        <div class="shape-tools">
+                            <button class="shape-btn" data-shape="sun" title="太阳">
+                                <div class="shape-preview sun">☀</div>
+                                <span>太阳</span>
+                            </button>
+                            <button class="shape-btn" data-shape="cloud" title="云朵">
+                                <div class="shape-preview cloud">☁</div>
+                                <span>云朵</span>
+                            </button>
+                            <button class="shape-btn" data-shape="leaf" title="叶子">
+                                <div class="shape-preview leaf">🍃</div>
+                                <span>叶子</span>
+                            </button>
+                            <button class="shape-btn" data-shape="drop" title="水滴">
+                                <div class="shape-preview drop">💧</div>
+                                <span>水滴</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="shape-category">
+                        <div class="shape-category-title">生物</div>
+                        <div class="shape-tools">
+                            <button class="shape-btn" data-shape="cell" title="细胞">
+                                <div class="shape-preview cell"></div>
+                                <span>细胞</span>
+                            </button>
+                            <button class="shape-btn" data-shape="bacteria" title="细菌">
+                                <div class="shape-preview bacteria"></div>
+                                <span>细菌</span>
+                            </button>
+                            <button class="shape-btn" data-shape="dna" title="DNA">
+                                <div class="shape-preview dna"></div>
+                                <span>DNA</span>
+                            </button>
+                            <button class="shape-btn" data-shape="heart" title="心脏">
+                                <div class="shape-preview heart">♥</div>
+                                <span>心脏</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="shape-category">
+                        <div class="shape-category-title">绘图工具</div>
+                        <div class="shape-tools">
+                            <button class="shape-btn" data-shape="arrow" title="箭头">
+                                <div class="shape-preview arrow">→</div>
+                                <span>箭头</span>
+                            </button>
+                            <button class="shape-btn" data-shape="line" title="直线">
+                                <div class="shape-preview line"></div>
+                                <span>直线</span>
+                            </button>
+                            <button class="shape-btn" data-shape="curve" title="曲线">
+                                <div class="shape-preview curve"></div>
+                                <span>曲线</span>
+                            </button>
+                            <button class="shape-btn" data-shape="text" title="文本框">
+                                <div class="shape-preview text-icon">T</div>
+                                <span>文本框</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-tools"></i> 操作工具</h3>
+                    <div class="tool-buttons">
+                        <button class="btn btn-tool active" id="btnSelect" title="选择工具">
+                            <i class="fas fa-mouse-pointer"></i> 选择
+                        </button>
+                        <button class="btn btn-tool" id="btnConnect" title="连线工具">
+                            <i class="fas fa-long-arrow-alt-right"></i> 连线
+                        </button>
+                        <button class="btn btn-tool" id="btnDraw" title="自由绘制">
+                            <i class="fas fa-pencil-alt"></i> 绘制
+                        </button>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-palette"></i> 样式</h3>
+                    <div class="style-options">
+                        <div class="style-row">
+                            <label>填充颜色</label>
+                            <input type="color" id="fillColor" value="#4A90D9">
+                        </div>
+                        <div class="style-row">
+                            <label>边框颜色</label>
+                            <input type="color" id="strokeColor" value="#2C5282">
+                        </div>
+                        <div class="style-row">
+                            <label>文字颜色</label>
+                            <input type="color" id="textColor" value="#FFFFFF">
+                        </div>
+                        <div class="style-row">
+                            <label>线条宽度</label>
+                            <input type="range" id="strokeWidth" min="1" max="10" value="2">
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <div class="canvas-area">
+                <div class="canvas-toolbar">
+                    <div class="toolbar-left">
+                        <button class="btn btn-sm" id="btnZoomIn" title="放大">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                        <button class="btn btn-sm" id="btnZoomOut" title="缩小">
+                            <i class="fas fa-search-minus"></i>
+                        </button>
+                        <button class="btn btn-sm" id="btnZoomReset" title="重置缩放">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                        <span class="zoom-level" id="zoomLevel">100%</span>
+                    </div>
+                    <div class="toolbar-right">
+                        <button class="btn btn-sm" id="btnUndo" title="撤销 (Ctrl+Z)">
+                            <i class="fas fa-undo"></i>
+                        </button>
+                        <button class="btn btn-sm" id="btnRedo" title="重做 (Ctrl+Y)">
+                            <i class="fas fa-redo"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" id="btnClear" title="清空画布">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="canvas-wrapper" id="canvasWrapper">
+                    <canvas id="mainCanvas"></canvas>
+                    <div class="canvas-grid" id="canvasGrid"></div>
+                </div>
+            </div>
+
+            <aside class="properties-panel" id="propertiesPanel">
+                <h3><i class="fas fa-sliders-h"></i> 属性</h3>
+                <div class="property-group">
+                    <label>文本内容</label>
+                    <input type="text" id="nodeText" placeholder="输入文本">
+                </div>
+                <div class="property-group">
+                    <label>形状类型</label>
+                    <select id="nodeType">
+                        <optgroup label="流程图">
+                            <option value="start">开始/结束</option>
+                            <option value="process">处理过程</option>
+                            <option value="decision">判断</option>
+                            <option value="data">数据</option>
+                        </optgroup>
+                        <optgroup label="基础形状">
+                            <option value="circle">圆形</option>
+                            <option value="rectangle">矩形</option>
+                            <option value="triangle">三角形</option>
+                            <option value="star">星形</option>
+                        </optgroup>
+                        <optgroup label="自然元素">
+                            <option value="sun">太阳</option>
+                            <option value="cloud">云朵</option>
+                            <option value="leaf">叶子</option>
+                            <option value="drop">水滴</option>
+                        </optgroup>
+                        <optgroup label="生物">
+                            <option value="cell">细胞</option>
+                            <option value="bacteria">细菌</option>
+                            <option value="dna">DNA</option>
+                            <option value="heart">心脏</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="property-group">
+                    <label>宽度</label>
+                    <input type="number" id="nodeWidth" min="20" max="500" value="100">
+                </div>
+                <div class="property-group">
+                    <label>高度</label>
+                    <input type="number" id="nodeHeight" min="20" max="500" value="100">
+                </div>
+                <div class="property-group">
+                    <label>旋转角度</label>
+                    <input type="range" id="nodeRotation" min="0" max="360" value="0">
+                </div>
+                <div class="property-actions">
+                    <button class="btn btn-sm btn-danger" id="btnDeleteNode">
+                        <i class="fas fa-trash"></i> 删除
+                    </button>
+                </div>
+            </aside>
+        </main>
+
+        <footer class="app-footer">
+            <div class="footer-left">
+                <span id="statusText">就绪</span>
+            </div>
+            <div class="footer-right">
+                <button class="btn btn-sm" id="btnExportPNG">
+                    <i class="fas fa-image"></i> 导出 PNG
+                </button>
+                <button class="btn btn-sm" id="btnExportJSON">
+                    <i class="fas fa-file-code"></i> 导出 JSON
+                </button>
+                <button class="btn btn-sm" id="btnImportJSON">
+                    <i class="fas fa-file-import"></i> 导入 JSON
+                </button>
+                <input type="file" id="importFile" accept=".json" style="display: none;">
+            </div>
+        </footer>
+    </div>
+
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-cog"></i> 设置</h2>
+                <button class="btn btn-icon modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="setting-group">
+                    <h3>AI 模型配置</h3>
+                    <div class="setting-option">
+                        <label class="radio-label">
+                            <input type="radio" name="aiMode" value="builtin" checked>
+                            <span>使用内置模型（arcee-ai/trinity-large-preview）</span>
+                        </label>
+                        <p class="setting-hint">使用内置的免费 AI 模型，无需配置</p>
+                    </div>
+                    <div class="setting-option">
+                        <label class="radio-label">
+                            <input type="radio" name="aiMode" value="custom">
+                            <span>自定义 API</span>
+                        </label>
+                        <div class="custom-api-config" id="customApiConfig" style="display: none;">
+                            <div class="form-group">
+                                <label>API 端点</label>
+                                <input type="text" id="apiEndpoint" placeholder="https://api.example.com/v1/chat/completions">
+                            </div>
+                            <div class="form-group">
+                                <label>API Key</label>
+                                <input type="password" id="apiKey" placeholder="输入你的 API Key">
+                            </div>
+                            <div class="form-group">
+                                <label>模型名称</label>
+                                <input type="text" id="modelName" placeholder="gpt-3.5-turbo">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <h3>画布设置</h3>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="showGrid" checked>
+                            显示网格
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="snapToGrid" checked>
+                            对齐到网格
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary modal-close">取消</button>
+                <button class="btn btn-primary" id="btnSaveSettings">保存设置</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="helpModal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h2><i class="fas fa-question-circle"></i> 使用帮助</h2>
+                <button class="btn btn-icon modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="help-section">
+                    <h3>🚀 快速开始</h3>
+                    <ol>
+                        <li>在左侧输入框中描述你想画的图表</li>
+                        <li>点击发送按钮，AI 会自动生成图表</li>
+                        <li>你可以拖拽、编辑元素进行调整</li>
+                        <li>支持上传文档，AI 会分析文档内容生成图表</li>
+                    </ol>
+                </div>
+                <div class="help-section">
+                    <h3>🎨 手动绘制</h3>
+                    <ul>
+                        <li>点击左侧形状工具，然后在画布上点击放置</li>
+                        <li>选择"连线"工具，点击两个形状创建连线</li>
+                        <li>双击形状可以编辑文字</li>
+                        <li>使用"绘制"工具可以自由画曲线</li>
+                    </ul>
+                </div>
+                <div class="help-section">
+                    <h3>📄 文档转图表</h3>
+                    <ul>
+                        <li>切换到"文档上传"标签</li>
+                        <li>上传 .txt, .md 或 .docx 文件</li>
+                        <li>AI 会分析文档内容并生成相应的图表</li>
+                    </ul>
+                </div>
+                <div class="help-section">
+                    <h3>⌨️ 快捷键</h3>
+                    <table class="shortcut-table">
+                        <tr><td><kbd>Ctrl+Z</kbd></td><td>撤销</td></tr>
+                        <tr><td><kbd>Ctrl+Y</kbd></td><td>重做</td></tr>
+                        <tr><td><kbd>Delete</kbd></td><td>删除选中元素</td></tr>
+                        <tr><td><kbd>Ctrl+S</kbd></td><td>导出 JSON</td></tr>
+                        <tr><td><kbd>Escape</kbd></td><td>取消选择</td></tr>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary modal-close">知道了</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <span>AI 正在生成...</span>
+        </div>
+    </div>
+
+    <script src="ai.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

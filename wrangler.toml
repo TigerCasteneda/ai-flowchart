@@ -1,0 +1,6 @@
+name = "ai-flowchart-proxy"
+main = "worker/index.js"
+compatibility_date = "2024-02-08"
+
+[vars]
+SITE_URL = ""
